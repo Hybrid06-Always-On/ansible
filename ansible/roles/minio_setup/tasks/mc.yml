@@ -1,8 +1,11 @@
-# 1. MinIO API 준비 대기
-- name: Wait for MinIO API ready
+# ==================================================
+# 1) Wait for MinIO API Ready (light check)
+# ==================================================
+- name: Wait for MinIO API ready (health/ready)
   ansible.builtin.uri:
     url: "{{ minio_local_base_url }}/minio/health/ready"
     method: GET
+    status_code: 200
     timeout: 2
   register: minio_ready
   retries: 60
@@ -12,8 +15,11 @@
   delegate_to: "{{ minio_first_node }}"
   changed_when: false
 
-# 2. mc alias 설정 (항상 보장)
-- name: Configure mc admin alias (ensure)
+
+# ==================================================
+# 2) Configure mc alias (retry once, must succeed)
+# ==================================================
+- name: Configure mc admin alias (must succeed)
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
@@ -22,24 +28,44 @@
     {{ mc_bin_path }} alias set {{ minio_mc_alias }}
     {{ minio_local_base_url }}
     {{ minio_root_user }} {{ minio_root_password }}
+  register: mc_alias_set
+  retries: 5
+  delay: 2
+  until: mc_alias_set.rc == 0
   run_once: true
   delegate_to: "{{ minio_first_node }}"
   changed_when: false
 
-# 3. 클러스터 admin 준비 확인
-- name: Wait for MinIO cluster initialization
+
+# ==================================================
+# 3) Wait for MinIO cluster admin ready (best-effort)
+# ==================================================
+- name: Wait for MinIO cluster initialization (admin info best-effort)
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
     {{ mc_bin_path }} admin info {{ minio_mc_alias }}
-  register: mc_admin_info
-  retries: 30
+  register: minio_cluster_info
+  retries: 200
   delay: 5
-  until: mc_admin_info.rc == 0
+  until: minio_cluster_info.rc == 0
   run_once: true
   delegate_to: "{{ minio_first_node }}"
+  failed_when: false
   changed_when: false
 
 
+# --------------------------------------------------
+# (Optional) Debug output when cluster not ready
+# --------------------------------------------------
+- name: Show admin info output when not ready (debug)
+  ansible.builtin.debug:
+    msg:
+      - "mc admin info rc={{ minio_cluster_info.rc }}"
+      - "{{ (minio_cluster_info.stdout | default(''))[:500] }}"
+      - "{{ (minio_cluster_info.stderr | default(''))[:500] }}"
+  when: minio_cluster_info.rc != 0
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"

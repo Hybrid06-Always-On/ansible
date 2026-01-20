@@ -1,16 +1,11 @@
 # ===== Buckets =====
-minio_buckets:
-  - name: video-hls
-    public: true
-  - name: video-thumb
-    public: true
-  - name: monitoring-loki
-    public: false
-
 minio_users:
   - name: backend
     password: "{{ minio_backend_password }}"
     buckets:
+      - video-hls
+      - video-thumb
+    public_buckets:
       - video-hls
       - video-thumb
 

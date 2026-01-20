@@ -2,7 +2,7 @@
 minio_mc_alias: local
 
 # mc 전용 운영 계정
-minio_mc_user: minio-mc
-minio_mc_group: minio
-minio_mc_home: /var/lib/minio-mc
-minio_mc_config_dir: /var/lib/minio-mc/.mc
+minio_mc_user: devops
+minio_mc_group: devops
+minio_mc_home: /home/devops
+minio_mc_config_dir: /home/devops/.mc

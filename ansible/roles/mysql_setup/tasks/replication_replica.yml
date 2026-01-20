@@ -67,8 +67,6 @@
     login_password: "{{ mysql_root_password }}"
     login_unix_socket: "{{ mysql_unix_socket }}"
     query: "SET GLOBAL read_only = ON;"
-  changed_when: false
-  failed_when: false
   no_log: true
 
 - name: Replica | Enable super_read_only

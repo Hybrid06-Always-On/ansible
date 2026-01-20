@@ -1,9 +1,29 @@
----
+# --------------------------------------------------
+# Install MinIO systemd service
+# --------------------------------------------------
 - name: Install MinIO systemd service
   ansible.builtin.template:
     src: minio.service.j2
     dest: /etc/systemd/system/minio.service
+    owner: root
+    group: root
     mode: "0644"
   notify:
     - daemon-reload
     - restart-minio
+
+# --------------------------------------------------
+# Reload systemd (보장용, handler 안 타도 실행)
+# --------------------------------------------------
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+# --------------------------------------------------
+# Enable and start MinIO service (항상 실행)
+# --------------------------------------------------
+- name: Enable and start MinIO service
+  ansible.builtin.systemd:
+    name: minio
+    enabled: yes
+    state: started

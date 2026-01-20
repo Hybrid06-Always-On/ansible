@@ -19,3 +19,24 @@
   run_once: true
   delegate_to: "{{ minio_first_node }}"
   changed_when: false
+
+
+# ==================================================
+# Anonymous (Public) Download Access
+# ==================================================
+- name: Set public buckets anonymous access
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} anonymous set public {{ minio_mc_alias }}/{{ item }}
+  loop: "{{ minio_users
+            | selectattr('public_buckets', 'defined')
+            | map(attribute='public_buckets')
+            | flatten
+            | unique }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  failed_when: false
+  changed_when: false

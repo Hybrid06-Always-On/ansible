@@ -102,6 +102,7 @@ http {
             
             # 응답 데이터 내의 내부 IP 주소를 외부 도메인/IP로 치환
             sub_filter 'http://10.5.1.20:9000' 'https://alwaysonteam.store';
+            sub_filter 'http://10.5.1.20:9000' 'https://www.alwaysonteam.store';
             sub_filter_once off;        # 모든 문자열에 대해 치환 적용
             sub_filter_types application/json; # JSON 데이터 타입에도 적용
             

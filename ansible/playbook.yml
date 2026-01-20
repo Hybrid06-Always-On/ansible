@@ -1,19 +1,19 @@
 ---
-# MinIO 이중화
-# - name: MinIO Setup
-#   hosts: minio
-#   tasks:
-#     - ansible.builtin.include_role:
-#         name: minio_setup
+# 1. MinIO 이중화
+- name: MinIO Setup
+  hosts: minio
+  tasks:
+    - ansible.builtin.include_role:
+        name: minio_setup
 
-# MySQL DB 이중화
+# 2. MySQL DB 이중화
 - name: MySQL Setup
   hosts: db
   tasks:
     - ansible.builtin.include_role:
         name: mysql_setup
 
-# HAProxy 구축
+# # 3.HAProxy 구축
 - name: HAProxy Installation and Configuration
   hosts: haproxy
   vars_files:
@@ -23,50 +23,77 @@
     - ansible.builtin.include_role:
         name: db_haproxy_setup
 
-# NFS 서버 구축
+# # 4. NFS 서버 구축
 - name: NFS Server Setup
   hosts: nfs
   tasks:
     - ansible.builtin.include_role:
-        name: nfs_setup
+         name: nfs_setup
 
-# SSL 인증서 설치
+# # 5. WAF 구축
+- name: WAF Setup
+  hosts: security
+  tasks:
+  - ansible.builtin.include_role:
+        name: waf_setup
+
+# 6. SSL 인증서 설치
 - name: SSL Setup
   hosts: reverse_proxy
   tasks:
-    - ansible.builtin.include_role:
-        name: ssl_setup
+  - ansible.builtin.include_role:
+      name: ssl_setup
 
-# WAF 구축
-# - name: WAF Setup
-#   hosts: security
-#   tasks:
-#     - ansible.builtin.include_role:
-#         name: waf_setup
-
-# Nginx Reverse Proxy 구축
+# 7. Nginx Reverse Proxy 구축
 - name: Nginx Reverse Proxy Setup
   hosts: reverse_proxy
   tasks:
-    - ansible.builtin.include_role:
-        name: reverse_proxy_setup
+  - ansible.builtin.include_role:
+      name: reverse_proxy_setup
 
-# Multi-ControlPlane k8s 클러스터 구축
+# 8. Multi-ControlPlane k8s 클러스터 구축
 - name: Cluster Setup
   hosts: kubernetes
   tasks:
     - ansible.builtin.include_role:
         name: k8s_cluster_setup
 
-# HelmChart 기본 환경 설정
-# - name: HelmChart Setup (control + worker)
-#   hosts: control1, worker_nodes
-#   become: false
-#   tasks:
-#     - ansible.builtin.include_role:
-#         name: helmchart_setup
+# 9. HelmChart 기본 환경 설정
+- name: HelmChart Setup (control + worker)
+  hosts: control1, worker_nodes
+  become: false
+  tasks:
+    # 클러스터가 완전히 구축될 때까지 대기
+    - name: Wait until all kube-system pods are Ready
+      shell: |
+        kubectl get pods -n kube-system --no-headers | grep -v "Running" | grep -v "Completed" | wc -l
+      register: pod_count
+      retries: 48             # 48번 재시도 (8분)
+      delay: 10               # 10초 간격
+      until: pod_count.stdout | trim | int == 0
+      run_once: true
+      delegate_to: control1
 
-# 모니터링 환경 구축
+    - name: Install HelmChart
+      ansible.builtin.include_role:
+        name: helmchart_setup
+
+# 10. Jekins 컨테이너 구축
+- name: Jenkins Container Setup
+  hosts: jenkins
+  tasks:
+    - ansible.builtin.include_role:
+        name: jenkins_setup
+
+# 11. ArgoCD 설정 및 애플리케이션 배포
+- name: argocd Setup
+  hosts: argocd
+  become: false
+  tasks:
+    - ansible.builtin.include_role:
+        name: argocd_setup
+
+# 12. 모니터링 환경 구축
 - name: Monitoring Setup
   hosts: all
   vars_files:

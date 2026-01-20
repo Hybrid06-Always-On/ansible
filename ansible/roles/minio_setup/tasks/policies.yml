@@ -1,53 +1,60 @@
-# =========================================
-# MinIO User Policies
-# =========================================
+# ==================================================
+# User Policies (FULL access per user buckets)
+# ==================================================
 
-- name: Render policy json per user
+# --------------------------------------------------
+# 1) Render user FULL policy json files
+# --------------------------------------------------
+- name: Render user FULL policy json
   ansible.builtin.template:
-    src: backend-policy.j2
-    dest: "/etc/minio/policies/{{ item.name }}-policy.json"
-    owner: root
-    group: root
-    mode: "0644"
-  vars:
-    user: "{{ item }}"   
+    src: user-full-policy.json.j2
+    dest: "/tmp/{{ item.name }}-full.json"
   loop: "{{ minio_users }}"
   loop_control:
     label: "{{ item.name }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
 
+# --------------------------------------------------
+# 2) Ensure MinIO policies exist
+# --------------------------------------------------
 - name: Ensure MinIO policies exist
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
-    {{ mc_bin_path }} admin policy create
-    {{ minio_mc_alias }}
-    {{ item.name }}-policy
-    /etc/minio/policies/{{ item.name }}-policy.json
+    {{ mc_bin_path }} admin policy create {{ minio_mc_alias }}
+    {{ item.name }}-full /tmp/{{ item.name }}-full.json
+  register: policy_create
   loop: "{{ minio_users }}"
   loop_control:
     label: "{{ item.name }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
-  failed_when: false
+  failed_when:
+    - policy_create.rc != 0
+    - "'already exists' not in policy_create.stderr"
   changed_when: false
 
-- name: Attach policy to users
+# --------------------------------------------------
+# 3) Attach policy to user
+# --------------------------------------------------
+- name: Attach policy to user
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
-    {{ mc_bin_path }} admin policy attach
-    {{ minio_mc_alias }}
-    {{ item.name }}-policy
-    --user {{ item.name }}
+    {{ mc_bin_path }} admin policy attach {{ minio_mc_alias }}
+    {{ item.name }}-full --user {{ item.name }}
+  register: policy_attach
   loop: "{{ minio_users }}"
   loop_control:
     label: "{{ item.name }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
+  failed_when:
+    - policy_attach.rc != 0
+    - "'already attached' not in policy_attach.stderr"
   changed_when: false

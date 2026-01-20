@@ -1,8 +1,11 @@
 # =========================================
-# Verify MinIO Final State
+# Verify MinIO Final State (FINAL)
 # =========================================
 
-- name: Verify MinIO cluster health
+# -------------------------------------------------
+# 1) Cluster health (retry + hard assert)
+# -------------------------------------------------
+- name: Verify MinIO cluster health (admin info with retry)
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
@@ -10,35 +13,60 @@
   ansible.builtin.command: >
     {{ mc_bin_path }} admin info {{ minio_mc_alias }}
   register: minio_verify
-  retries: 10
-  delay: 3
+  retries: 30
+  delay: 5
   until: minio_verify.rc == 0
   run_once: true
   delegate_to: "{{ minio_first_node }}"
   changed_when: false
+  failed_when: false   # 🔥 핵심
 
-- name: Verify users exist
+
+- name: Assert MinIO cluster is healthy
+  ansible.builtin.assert:
+    that:
+      - minio_verify.rc == 0
+      - >
+        (minio_verify.stdout is defined and minio_verify.stdout | length > 0)
+        or
+        (minio_verify.stderr is defined and minio_verify.stderr | length > 0)
+    fail_msg: >
+      MinIO cluster health check failed.
+      admin info command did not return valid output.
+  run_once: true
+
+
+
+# -------------------------------------------------
+# 2) Verify users exist (hard fail)
+# -------------------------------------------------
+- name: Verify MinIO users exist
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
     {{ mc_bin_path }} admin user info {{ minio_mc_alias }} {{ item.name }}
+  register: user_verify
   loop: "{{ minio_users }}"
   loop_control:
     label: "{{ item.name }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
-  failed_when: false
+  failed_when: user_verify.rc != 0
   changed_when: false
 
-- name: Verify buckets exist
+# -------------------------------------------------
+# 3) Verify buckets exist (hard fail)
+# -------------------------------------------------
+- name: Verify MinIO buckets exist
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
     {{ mc_bin_path }} ls {{ minio_mc_alias }}/{{ item }}
+  register: bucket_verify
   loop: "{{ minio_users
             | selectattr('buckets', 'defined')
             | map(attribute='buckets')
@@ -48,8 +76,12 @@
     label: "{{ item }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
+  failed_when: bucket_verify.rc != 0
   changed_when: false
 
+# -------------------------------------------------
+# 4) Verify policies attached to users (hard fail)
+# -------------------------------------------------
 - name: Verify policies attached to users
   become: true
   become_user: "{{ minio_mc_user }}"
@@ -58,30 +90,36 @@
   ansible.builtin.command: >
     {{ mc_bin_path }} admin policy entities
     {{ minio_mc_alias }}
-    {{ item.name }}-policy
+    --user {{ item.name }}
+  register: policy_verify
   loop: "{{ minio_users }}"
   loop_control:
     label: "{{ item.name }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
-  failed_when: false
+  failed_when: policy_verify.rc != 0
   changed_when: false
 
-- name: Verify public buckets anonymous access
+
+# -------------------------------------------------
+# 5) Verify anonymous(public) access (optional)
+# -------------------------------------------------
+- name: Verify public buckets anonymous access (optional)
   become: true
   become_user: "{{ minio_mc_user }}"
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
-    {{ mc_bin_path }} anonymous get {{ minio_mc_alias }}/{{ item }}
+    {{ mc_bin_path }} anonymous get
+    {{ minio_mc_alias }}/{{ item }}
+  register: public_verify
   loop: "{{ minio_users
             | selectattr('public_buckets', 'defined')
             | map(attribute='public_buckets')
             | flatten
             | unique }}"
-  loop_control:
-    label: "{{ item }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
-  failed_when: false
+  failed_when: false     # optional feature
   changed_when: false
+

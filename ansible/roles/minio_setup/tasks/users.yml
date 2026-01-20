@@ -9,14 +9,12 @@
   environment:
     MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
   ansible.builtin.command: >
-    {{ mc_bin_path }} admin user add
-    {{ minio_mc_alias }}
-    {{ item.name }}
-    {{ item.password }}
+    {{ mc_bin_path }} admin user add {{ minio_mc_alias }}
+    {{ item.name }} {{ item.password }}
+  register: user_add
   loop: "{{ minio_users }}"
-  loop_control:
-    label: "{{ item.name }}"
   run_once: true
   delegate_to: "{{ minio_first_node }}"
-  failed_when: false
-  changed_when: false
+  failed_when:
+    - user_add.rc != 0
+    - "'already exists' not in user_add.stderr"
