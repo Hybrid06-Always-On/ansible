@@ -1,0 +1,44 @@
+---
+- name: Install HAProxy
+  ansible.builtin.yum:
+    name: haproxy
+    state: present
+
+# firewalld 모듈 작동을 위한 필수 패키지 설치
+- name: Install firewalld and python3-firewall
+  ansible.builtin.yum:
+    name:
+      - firewalld
+      - python3-firewall
+    state: present
+
+- name: Ensure firewalld is started and enabled
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Allow HAProxy Ports in firewalld (3306, 19000)
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - "3306/tcp"
+    - "19000/tcp"
+
+- name: Deploy haproxy.cfg
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  notify: RestartHAProxy
+
+- name: Enable and start HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+    enabled: yes

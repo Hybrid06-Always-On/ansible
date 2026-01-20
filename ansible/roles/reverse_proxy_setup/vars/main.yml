@@ -1,0 +1,20 @@
+---
+# external_domain: 121.160.41.59
+external_domain:
+  - alwaysonteam.store
+  - www.alwaysonteam.store
+internal_domain: 10.5.1.20
+
+url:
+  jenkins: 10.5.1.10
+  web: 10.5.2.150
+  minio:
+    - 10.5.4.90
+    - 10.5.4.100
+  control_plane:
+    - 10.5.2.30
+    - 10.5.2.40
+    - 10.5.2.50
+
+api_backend: 10.5.2.60
+api_port: 32000

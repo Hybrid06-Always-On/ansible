@@ -1,0 +1,36 @@
+---
+# 1. 소프트웨어 버전 (2026 최신 안정화 기준)
+ver:
+  node: "1.9.0"
+  mysql: "0.16.1"
+  haproxy: "0.15.0"
+  nginx_exporter: "1.3.0"
+  promtail: "3.1.0"
+
+# 2. 네트워크 포트 설정
+port:
+  node: 9100
+  haproxy: 9101
+  mysql: 9104
+  nginx: 9113
+  minio: 9000
+  promtail: 9080
+  prom: 31100
+
+# 3. 설치 경로 및 공통 설정
+path:
+  bin: "/usr/local/bin"
+  tmp: "/tmp"
+  config: "/etc/monitoring"
+
+# 4. MySQL 모니터링 전용 계정 (Playbook에서 활용)
+db_monitor:
+  user: "exporter"
+  pass: "{{ vault_mysql_exporter_password }}"
+
+# 쿠버네티스 워커 노드 IP 리스트 (Loki 주소)
+k8s_loki_nodes:
+  - 10.5.2.60
+  - 10.5.2.70
+  - 10.5.2.80
+loki_port: 31100

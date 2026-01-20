@@ -1,0 +1,25 @@
+# MySQL 기본 설정
+mysql_port: 3306
+mysql_service_name: mysqld
+
+# DB 이름
+app_db_name: streaming
+
+# 계정 이름
+mysql_root_user: root
+mysql_repl_user: repl_user
+mysql_app_user: stream_app
+
+# replication 관련
+mysql_binlog_format: ROW
+mysql_repl_port: 3306
+force_repl_reset: false
+
+mysql_unix_socket: /var/lib/mysql/mysql.sock
+mysql_primary_host: storage1
+
+# haproxy check
+haproxy_check_user: haproxy_check
+
+active_db_node: storage1
+backup_db_node: storage2

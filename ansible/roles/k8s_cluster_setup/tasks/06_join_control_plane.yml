@@ -1,0 +1,31 @@
+---
+- name: 인증서 생성
+  ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+  register: kubeadm_upload_certs_output
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: 인증서를 fact 변수로 저장
+  set_fact:
+    cert_key: "{{ kubeadm_upload_certs_output.stdout | regex_search('([a-f0-9]{64})') }}"
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: 컨트롤 플레인 join을 위한 토큰 생성
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: kubeadm_join_cmd
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: join 명령어를 매직 변수에 설정
+  set_fact:
+    control_plane_join_cmd: >-
+      {{ kubeadm_join_cmd.stdout }}
+      --control-plane
+      --certificate-key {{ cert_key }}
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: 컨트롤 플레인 join 수행
+  ansible.builtin.command:
+    cmd: "{{ hostvars[groups['control_plane'][0]].control_plane_join_cmd }}"
+  when:
+    - inventory_hostname != groups['control_plane'][0]
+  args:
+    creates: /etc/kubernetes/kubelet.conf     # 이미 조인된 경우 다시 실행하지 않음

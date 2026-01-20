@@ -1,0 +1,6 @@
+---
+- name: vm-tools 설치 및 설정
+  ansible.builtin.include_tasks: vm_tools_setting.yml
+
+- name: nfs 서버 설정
+  ansible.builtin.include_tasks: nfs_server_setting.yml

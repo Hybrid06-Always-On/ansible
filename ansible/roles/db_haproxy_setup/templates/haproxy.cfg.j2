@@ -1,0 +1,40 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    maxconn 4096
+    daemon
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    option dontlognull
+    timeout connect 5s
+    timeout client  1m
+    timeout server  1m
+
+# [1] Stats 페이지 설정 (브라우저에서 접속: http://HAProxy_IP:19000/haproxy_stats)
+listen stats
+    bind *:19000
+    mode http
+    stats enable
+    stats uri /haproxy_stats
+    stats refresh 5s
+    stats auth admin:{{ mysql_root_password }}
+    stats show-legends
+
+# [2] MySQL 프론트엔드 (애플리케이션이 접속할 포트)
+frontend mysql_in
+    bind *:{{ mysql_port | default(3306) }}
+    default_backend mysql_backend
+
+# [3] MySQL 백엔드 (Primary 우선, 장애 시 Replica 우회)
+backend mysql_backend
+    mode tcp
+    option mysql-check user haproxy_check
+    balance first
+    # active_db_node 변수에 지정된 서버가 메인이 됨
+    server main {{ hostvars[active_db_node]['ansible_host'] }}:3306 check inter 2s fall 3 rise 2
+    # backup_db_node 변수에 지정된 서버가 백업이 됨
+    server backup {{ hostvars[backup_db_node]['ansible_host'] }}:3306 check inter 2s fall 3 rise 2 backup
+

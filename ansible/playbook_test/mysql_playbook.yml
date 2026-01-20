@@ -1,0 +1,9 @@
+---
+- name: MySQL Setup
+  hosts: db
+  become: yes
+  gather_facts: yes
+  tasks:
+    - ansible.builtin.include_role:
+        name: mysql_setup
+

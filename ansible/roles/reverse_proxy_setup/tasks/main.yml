@@ -1,0 +1,50 @@
+---
+- name: 1. epel-release, nginx, firewalld, nginx-mod-stream 패키지 설치
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - epel-release
+    - nginx
+    - firewalld
+    - nginx-mod-stream
+
+- name: 2. 캐시 디렉터리 생성
+  ansible.builtin.file:
+    path: /var/cache/nginx
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: "0755"
+
+- name: 3. 서비스 설정
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: nginx reloaded # 설정 파일 변경 시 리로드
+
+- name: 4. 서비스 시작 - nginx, firewalld
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - firewalld
+
+- name: 5. 방화벽 허용 - 443/80, 9000/9001, 6443
+  ansible.builtin.firewalld:
+    zone: public
+    port: "{{ item }}"
+    state: enabled
+    permanent: yes
+    immediate: yes
+  loop:
+    - 80/tcp
+    - 443/tcp
+    - 6443/tcp
+    - 9000/tcp
+    - 9001/tcp

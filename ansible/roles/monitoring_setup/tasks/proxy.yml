@@ -1,0 +1,197 @@
+---
+# 1. Nginx stub_status 설정 (nginx.conf 내부 주입 방식)
+- name: "Add stub_status to Nginx configuration"
+  blockinfile:
+    path: /etc/nginx/nginx.conf
+    # 정규식(\s*)을 사용하여 공백 개수에 상관없이 매칭시킵니다.
+    insertafter: '^http\s*{'  
+    marker: "# {mark} ANSIBLE MANAGED NGINX STATUS BLOCK"
+    block: |
+      server {
+          listen 127.0.0.1:8081;
+          location /nginx_status {
+              stub_status on;
+              access_log off;
+              allow 127.0.0.1;
+              deny all;
+          }
+      }
+    # 안전장치: 수정 후 문법에 문제없는지 검사
+    validate: nginx -t -c %s
+  register: nginx_config_status
+  become: true
+
+- name: "Validate Nginx configuration"
+  command: nginx -t
+  register: nginx_test
+  changed_when: false
+
+- name: "Reload Nginx if config changed"
+  systemd:
+    name: nginx
+    state: reloaded
+  when: nginx_config_status.changed and nginx_test.rc == 0
+
+# 2. Nginx 공식 Exporter 설치
+- name: "Download Nginx Official Exporter"
+  get_url:
+    url: "https://github.com/nginxinc/nginx-prometheus-exporter/releases/download/v{{ ver.nginx_exporter }}/nginx-prometheus-exporter_{{ ver.nginx_exporter }}_linux_amd64.tar.gz"
+    dest: "{{ path.tmp }}/nginx_exporter.tar.gz"
+
+- name: "Extract Nginx Exporter"
+  unarchive:
+    src: "{{ path.tmp }}/nginx_exporter.tar.gz"
+    dest: "{{ path.tmp }}"
+    remote_src: yes
+
+- name: "Install Nginx Exporter Binary"
+  copy:
+    src: "{{ path.tmp }}/nginx-prometheus-exporter"
+    dest: "{{ path.bin }}/nginx-prometheus-exporter"
+    mode: "0755"
+    remote_src: yes
+
+# 3. HAProxy Exporter 설치
+- name: "Download HAProxy Exporter"
+  get_url:
+    url: "https://github.com/prometheus/haproxy_exporter/releases/download/v{{ ver.haproxy }}/haproxy_exporter-{{ ver.haproxy }}.linux-amd64.tar.gz"
+    dest: "{{ path.tmp }}/haproxy_exporter.tar.gz"
+
+- name: "Extract HAProxy Exporter"
+  unarchive:
+    src: "{{ path.tmp }}/haproxy_exporter.tar.gz"
+    dest: "{{ path.tmp }}"
+    remote_src: yes
+
+- name: "Install HAProxy Exporter Binary"
+  copy:
+    src: "{{ path.tmp }}/haproxy_exporter-{{ ver.haproxy }}.linux-amd64/haproxy_exporter"
+    dest: "{{ path.bin }}/haproxy_exporter"
+    mode: "0755"
+    remote_src: yes
+
+# 4. Systemd 서비스 등록 (Nginx) - 포트 8081 반영
+- name: "Create Nginx Exporter Service"
+  copy:
+    dest: /etc/systemd/system/nginx_exporter.service
+    content: |
+      [Unit]
+      Description=Nginx Prometheus Exporter
+      After=network-online.target
+
+      [Service]
+      User=root
+      # !! 수정됨: 8081 포트 바라보도록 설정
+      ExecStart={{ path.bin }}/nginx-prometheus-exporter -nginx.scrape-uri=http://127.0.0.1:8081/nginx_status -web.listen-address=:{{ port.nginx }}
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+# 5. Systemd 서비스 등록 (HAProxy) - 인증 정보 포함
+- name: "Create HAProxy Exporter Service"
+  copy:
+    dest: /etc/systemd/system/haproxy_exporter.service
+    content: |
+      [Unit]
+      Description=HAProxy Exporter
+      After=network-online.target
+
+      [Service]
+      User=root
+      # !! 수정됨: admin 계정과 mysql_root_password 인증 추가
+      ExecStart={{ path.bin }}/haproxy_exporter --haproxy.scrape-uri="http://admin:{{ mysql_root_password }}@127.0.0.1:19000/haproxy_stats;csv" --web.listen-address=:{{ port.haproxy }}
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+# 6. 서비스 활성화 및 재시작
+- name: "Enable and Restart Exporters"
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  loop:
+    - nginx_exporter
+    - haproxy_exporter
+
+# 7. 방화벽 설정
+- name: "Populate service facts"
+  service_facts:
+
+- name: "Open Exporter ports in firewalld"
+  firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - "{{ port.nginx }}"
+    - "{{ port.haproxy }}"
+  when:
+    - ansible_facts.services['firewalld.service'] is defined
+    - ansible_facts.services['firewalld.service'].state == 'running'
+  ignore_errors: true
+######################## promtail 설치
+# 8. Promtail 설치 및 설정 디렉토리 생성
+- name: "Create Promtail Config Directory"
+  file:
+    path: "{{ path.config }}/promtail"
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: "Download and Extract Promtail"
+  unarchive:
+    src: "https://github.com/grafana/loki/releases/download/v{{ ver.promtail }}/promtail-linux-amd64.zip"
+    dest: "{{ path.bin }}"
+    remote_src: yes
+  become: true
+
+# 9. Promtail 설정 파일 생성 (템플릿 방식)
+- name: "Create Promtail Configuration"
+  template:
+    src: "promtail-config.yml.j2"
+    dest: "{{ path.config }}/promtail/promtail-config.yml"
+    mode: '0644'
+  become: true
+
+# 10. Systemd 서비스 등록 (Promtail)
+- name: "Create Promtail Service"
+  copy:
+    dest: /etc/systemd/system/promtail.service
+    content: |
+      [Unit]
+      Description=Promtail Service (Loki Log Collector)
+      After=network-online.target
+
+      [Service]
+      User=root
+      ExecStart={{ path.bin }}/promtail-linux-amd64 -config.file={{ path.config }}/promtail/promtail-config.yml
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+  become: true
+
+# 11. Promtail 서비스 활성화 및 방화벽 오픈
+- name: "Enable and Restart Promtail"
+  systemd:
+    name: promtail
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  become: true
+
+- name: "Open Promtail port in firewalld"
+  firewalld:
+    port: "{{ port.prom }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when:
+    - ansible_facts.services['firewalld.service'] is defined
+    - ansible_facts.services['firewalld.service'].state == 'running'
+  ignore_errors: true

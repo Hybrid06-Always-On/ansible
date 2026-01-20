@@ -1,0 +1,7 @@
+---
+- name: argocd Setup
+  hosts: argocd
+  become: false
+  tasks:
+    - ansible.builtin.include_role:
+        name: argocd_setup

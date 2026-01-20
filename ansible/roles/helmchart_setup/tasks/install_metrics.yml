@@ -1,0 +1,23 @@
+---
+- name: 디렉터리 생성
+  ansible.builtin.file:
+    path: ~/tools/metrics
+    state: directory
+    mode: '0755'
+    owner: devops
+    group: devops
+
+- name: Metrics Server yaml 파일 다운로드
+  ansible.builtin.get_url:
+    url: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+    dest: ~/tools/metrics/components.yaml
+
+- name: Metrics Server yaml 파일 수정 - 인증서 무시
+  ansible.builtin.replace:
+    path: ~/tools/metrics/components.yaml
+    regexp: '(args:\n(?:\s+- .*\n)*)'
+    replace: '\1        - --kubelet-insecure-tls\n'    # 들여쓰기 필수
+
+- name: Metrics Server 설치
+  ansible.builtin.command: >
+    kubectl apply -f ~/tools/metrics/components.yaml

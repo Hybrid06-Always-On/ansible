@@ -1,0 +1,5 @@
+# Storage (디렉토리 방식)
+minio_data_dir: /mnt/minio
+minio_data_subdirs:
+  - data1
+  - data2

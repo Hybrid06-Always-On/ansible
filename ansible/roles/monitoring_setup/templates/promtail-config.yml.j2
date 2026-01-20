@@ -1,0 +1,21 @@
+server:
+  http_listen_port: {{ port.promtail }}
+  grpc_listen_port: 0
+
+positions:
+  filename: {{ path.config }}/promtail/positions.yaml
+
+clients:
+{% for node in k8s_loki_nodes %}
+  - url: http://{{ node }}:{{ loki_port }}/loki/api/v1/push
+{% endfor %}
+
+scrape_configs:
+  - job_name: nginx_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          host: "{{ ansible_hostname }}"
+          __path__: /var/log/nginx/*.log

@@ -1,0 +1,148 @@
+---
+# ==================================================
+# 1. Dependency installation
+# ==================================================
+- name: Install build dependencies
+  ansible.builtin.dnf:
+    name:
+      - gcc-c++
+      - make
+      - automake
+      - autoconf
+      - libtool
+      - pcre-devel
+      - pcre2-devel
+      - libxml2-devel
+      - curl-devel
+      - pkgconfig
+      - libevent-devel
+      - flex
+      - bison
+      - zlib-devel
+      - openssl-devel
+      - git
+      - wget
+    state: present
+
+# ==================================================
+# 2. ModSecurity v3 build
+# ==================================================
+- name: Clone ModSecurity
+  ansible.builtin.git:
+    repo: https://github.com/SpiderLabs/ModSecurity
+    dest: "{{ modsecurity_src_dir }}"
+    version: v3/master
+    depth: 1
+
+- name: Init submodules
+  ansible.builtin.command: git submodule update --init --recursive
+  args:
+    chdir: "{{ modsecurity_src_dir }}"
+
+- name: Build & install ModSecurity
+  ansible.builtin.shell: |
+    ./build.sh
+    ./configure
+    make -j$(nproc)
+    make install
+  args:
+    chdir: "{{ modsecurity_src_dir }}"
+    creates: /usr/local/modsecurity/lib/libmodsecurity.so
+
+# ==================================================
+# 3. Nginx dynamic module build
+# ==================================================
+- name: Clone ModSecurity-nginx
+  ansible.builtin.git:
+    repo: https://github.com/SpiderLabs/ModSecurity-nginx.git
+    dest: "{{ modsecurity_nginx_dir }}"
+    depth: 1
+
+- name: Download nginx source
+  ansible.builtin.get_url:
+    url: "http://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
+    dest: "/opt/nginx-{{ nginx_version }}.tar.gz"
+
+- name: Extract nginx
+  ansible.builtin.unarchive:
+    src: "/opt/nginx-{{ nginx_version }}.tar.gz"
+    dest: /opt
+    remote_src: yes
+
+- name: Build nginx modsecurity module
+  ansible.builtin.shell: |
+    ./configure --with-compat --add-dynamic-module={{ modsecurity_nginx_dir }}
+    make modules
+  args:
+    chdir: "{{ nginx_src_dir }}"
+    creates: "{{ nginx_src_dir }}/objs/ngx_http_modsecurity_module.so"
+
+- name: Install nginx modsecurity module
+  ansible.builtin.copy:
+    src: "{{ nginx_src_dir }}/objs/ngx_http_modsecurity_module.so"
+    dest: "{{ nginx_module_dir }}/ngx_http_modsecurity_module.so"
+    remote_src: yes
+    mode: '0755'
+
+# ==================================================
+# 4. ModSecurity config & CRS
+# ==================================================
+- name: Create modsecurity config dir
+  ansible.builtin.file:
+    path: "{{ modsec_conf_dir }}"
+    state: directory
+
+- name: Copy modsecurity.conf
+  ansible.builtin.copy:
+    src: "{{ modsecurity_src_dir }}/modsecurity.conf-recommended"
+    dest: "{{ modsec_conf_dir }}/modsecurity.conf"
+    remote_src: yes
+
+- name: Copy unicode.mapping
+  ansible.builtin.copy:
+    src: "{{ modsecurity_src_dir }}/unicode.mapping"
+    dest: "{{ modsec_conf_dir }}/unicode.mapping"
+    remote_src: yes
+
+- name: Enable blocking mode
+  ansible.builtin.replace:
+    path: "{{ modsec_conf_dir }}/modsecurity.conf"
+    regexp: 'SecRuleEngine DetectionOnly'
+    replace: 'SecRuleEngine On'
+
+- name: Remove SecDefaultAction
+  ansible.builtin.lineinfile:
+    path: "{{ modsec_conf_dir }}/modsecurity.conf"
+    regexp: '^SecDefaultAction'
+    state: absent
+
+- name: Clone OWASP CRS
+  ansible.builtin.git:
+    repo: https://github.com/coreruleset/coreruleset.git
+    dest: "{{ modsec_conf_dir }}/coreruleset"
+    depth: 1
+
+- name: Setup CRS config
+  ansible.builtin.copy:
+    src: "{{ modsec_conf_dir }}/coreruleset/crs-setup.conf.example"
+    dest: "{{ modsec_conf_dir }}/crs-setup.conf"
+    remote_src: yes
+
+- name: Copy CRS rules
+  ansible.builtin.copy:
+    src: "{{ modsec_conf_dir }}/coreruleset/rules/"
+    dest: "{{ modsec_conf_dir }}/rules/"
+    remote_src: yes
+
+- name: Deploy ModSecurity main.conf
+  ansible.builtin.template:
+    src: modsec_main.conf.j2
+    dest: "{{ modsec_conf_dir }}/main.conf"
+
+
+- name: Deploy ModSecurity main.conf
+  ansible.builtin.template:
+    src: modsecurity.conf.j2
+    dest: "{{ modsec_conf_dir }}/modsecurity.conf"
+
+

@@ -1,0 +1,24 @@
+# =========================================
+# MinIO Public Buckets
+# - anonymous GET(Object) only
+# =========================================
+
+- name: Set public buckets to anonymous download
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} anonymous set download
+    {{ minio_mc_alias }}/{{ item }}
+  loop: "{{ minio_users
+            | selectattr('public_buckets', 'defined')
+            | map(attribute='public_buckets')
+            | flatten
+            | unique }}"
+  loop_control:
+    label: "{{ item }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  failed_when: false
+  changed_when: false

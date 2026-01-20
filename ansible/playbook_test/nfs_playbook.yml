@@ -1,0 +1,6 @@
+---
+- name: NFS Server Setup
+  hosts: nfs
+  tasks:
+    - ansible.builtin.include_role:
+        name: nfs_setup

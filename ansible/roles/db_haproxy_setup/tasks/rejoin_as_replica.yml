@@ -1,0 +1,56 @@
+---
+- name: 1. Set Read-Only (Safety first)
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_unix_socket }}"
+    query:
+      - SET GLOBAL read_only = ON;
+      - SET GLOBAL super_read_only = ON;
+
+- name: 2. Stop Replica Thread
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_unix_socket }}"
+    query: "STOP REPLICA;"
+  failed_when: false # 이미 멈춰있을 경우 에러 방지
+
+- name: 3. Reset Replica All
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_unix_socket }}"
+    query: "RESET REPLICA ALL;"
+
+- name: 4. Change Master to Current Primary (Using group_vars)
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_unix_socket }}"
+    query: |
+      CHANGE REPLICATION SOURCE TO
+        {# group_vars에 정의된 mysql_primary_host의 IP를 가져옵니다 #}
+        SOURCE_HOST='{{ hostvars[mysql_primary_host]['ansible_host'] }}',
+        SOURCE_USER='{{ mysql_repl_user }}',
+        SOURCE_PASSWORD='{{ mysql_repl_password }}',
+        SOURCE_AUTO_POSITION=1;
+
+- name: 5. Start Replica Thread
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_unix_socket }}"
+    query: "START REPLICA;"
+
+- name: 6. Verify Replication Status
+  ansible.builtin.command: >
+    mysql --protocol=socket -uroot -p'{{ mysql_root_password }}' -e "SHOW REPLICA STATUS\G"
+  register: repl_status
+  changed_when: false
+
+- name: Assert IO and SQL Threads are Running
+  ansible.builtin.assert:
+    that:
+      - repl_status.stdout is search("Replica_IO_Running: Yes")
+      - repl_status.stdout is search("Replica_SQL_Running: Yes")

@@ -1,0 +1,12 @@
+---
+- name: Calico Operator CRDs 적용
+  become: false
+  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/operator-crds.yaml
+
+- name: Calico Operator 적용
+  become: false
+  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/tigera-operator.yaml
+
+- name: Calico Custom Resources 적용
+  become: false
+  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/custom-resources.yaml

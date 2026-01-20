@@ -1,0 +1,22 @@
+---
+# =========================
+# Control Plane 전용 작업 (control1만)
+# =========================
+- name: Helm 설치 (control-plane leader)
+  ansible.builtin.include_tasks: install_helm.yml
+  when: inventory_hostname == 'control1'
+
+- name: MetalLB 설치 (control-plane leader)
+  ansible.builtin.include_tasks: install_metallb.yml
+  when: inventory_hostname == 'control1'
+
+- name: Metrics Server 설치 (control-plane leader)
+  ansible.builtin.include_tasks: install_metrics.yml
+  when: inventory_hostname == 'control1'
+
+# =========================
+# Worker Node 전용 작업
+# =========================
+- name: NFS Client 설치 (worker-nodes)
+  ansible.builtin.include_tasks: install_nfs_client.yml
+  when: inventory_hostname in groups['worker_nodes']

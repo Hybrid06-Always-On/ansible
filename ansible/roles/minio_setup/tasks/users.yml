@@ -1,0 +1,22 @@
+# =========================================
+# MinIO Application Users
+# “idempotent하게 생성 시도(존재 시 실패 무시)
+# =========================================
+
+- name: Ensure MinIO users exist
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} admin user add
+    {{ minio_mc_alias }}
+    {{ item.name }}
+    {{ item.password }}
+  loop: "{{ minio_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  failed_when: false
+  changed_when: false

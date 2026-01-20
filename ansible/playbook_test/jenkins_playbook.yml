@@ -1,0 +1,6 @@
+---
+- name: Jenkins Container Setup
+  hosts: jenkins
+  tasks:
+    - ansible.builtin.include_role:
+        name: jenkins_setup

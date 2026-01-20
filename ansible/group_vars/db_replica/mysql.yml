@@ -1,0 +1,2 @@
+mysql_role: replica
+mysql_server_id: 100

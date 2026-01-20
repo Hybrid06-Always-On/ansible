@@ -1,0 +1,8 @@
+modsecurity_src_dir: /opt/ModSecurity
+modsecurity_nginx_dir: /opt/ModSecurity-nginx
+
+nginx_version: "1.20.1"
+nginx_src_dir: "/opt/nginx-{{ nginx_version }}"
+nginx_module_dir: /usr/lib64/nginx/modules
+
+modsec_conf_dir: /etc/nginx/modsec

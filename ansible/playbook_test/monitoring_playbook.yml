@@ -1,0 +1,10 @@
+---
+- name: "Infrastructure Monitoring Deployment"
+  hosts: all
+  become: yes
+  vars_files:
+    - "../group_vars/db/vault.yml"
+
+  roles:
+    - role: monitoring_setup
+      tags: always

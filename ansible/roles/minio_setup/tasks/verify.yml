@@ -1,0 +1,87 @@
+# =========================================
+# Verify MinIO Final State
+# =========================================
+
+- name: Verify MinIO cluster health
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} admin info {{ minio_mc_alias }}
+  register: minio_verify
+  retries: 10
+  delay: 3
+  until: minio_verify.rc == 0
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  changed_when: false
+
+- name: Verify users exist
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} admin user info {{ minio_mc_alias }} {{ item.name }}
+  loop: "{{ minio_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  failed_when: false
+  changed_when: false
+
+- name: Verify buckets exist
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} ls {{ minio_mc_alias }}/{{ item }}
+  loop: "{{ minio_users
+            | selectattr('buckets', 'defined')
+            | map(attribute='buckets')
+            | flatten
+            | unique }}"
+  loop_control:
+    label: "{{ item }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  changed_when: false
+
+- name: Verify policies attached to users
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} admin policy entities
+    {{ minio_mc_alias }}
+    {{ item.name }}-policy
+  loop: "{{ minio_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  failed_when: false
+  changed_when: false
+
+- name: Verify public buckets anonymous access
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} anonymous get {{ minio_mc_alias }}/{{ item }}
+  loop: "{{ minio_users
+            | selectattr('public_buckets', 'defined')
+            | map(attribute='public_buckets')
+            | flatten
+            | unique }}"
+  loop_control:
+    label: "{{ item }}"
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  failed_when: false
+  changed_when: false

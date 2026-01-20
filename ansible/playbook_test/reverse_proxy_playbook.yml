@@ -1,0 +1,6 @@
+---
+- name: Nginx Reverse Proxy Setup
+  hosts: reverse_proxy
+  tasks:
+    - ansible.builtin.include_role:
+        name: reverse_proxy_setup

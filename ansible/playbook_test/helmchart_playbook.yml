@@ -1,0 +1,6 @@
+---
+- name: HelmChart Setup Test (control + worker)
+  hosts: control1, worker_nodes
+  become: false
+  roles:
+    - helmchart_setup

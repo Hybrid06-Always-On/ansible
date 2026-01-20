@@ -1,0 +1,29 @@
+# Service
+minio_user: minio
+minio_group: minio
+
+# Binaries
+minio_bin_path: /usr/local/bin/minio
+mc_bin_path: /usr/local/bin/mc
+
+# Download URLs 
+minio_server_url: "https://dl.min.io/server/minio/release/linux-amd64/minio"
+mc_url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
+
+# Cluster
+minio_first_node: "{{ groups['minio'][0] }}"
+
+# Health
+minio_scheme: http
+minio_local_host: 127.0.0.1
+minio_local_base_url: "{{ minio_scheme }}://{{ minio_local_host }}:{{ minio_api_port }}"
+minio_health_ready_url: "{{ minio_local_base_url }}/minio/health/ready"
+
+# Retry
+minio_wait_port_timeout: 180
+minio_ready_retries: 180
+minio_ready_delay: 2
+
+minio_mc_alias_retries: 10
+minio_mc_alias_delay: 3
+

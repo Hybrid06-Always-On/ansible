@@ -1,0 +1,44 @@
+---
+- name: 1. NFS 패키지 설치
+  ansible.builtin.dnf:
+    name: nfs-utils
+    state: present
+
+- name: 2. 모니터링용 공유 폴더 생성
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0777'
+  loop: "{{ monitoring_folder }}"
+
+# NFSv4 export 설정
+- name: 3. /etc/exports 설정
+  ansible.builtin.copy:
+    src: exports
+    dest: /etc/exports
+    mode: '0644'
+  notify: restart nfs-server
+
+# NFS 서비스 시작
+- name: 4. 서비스 시작
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - nfs-server
+    - rpcbind
+    - firewalld
+
+# 방화벽 설정
+- name: 5. 방화벽 설정
+  ansible.builtin.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - nfs
+    - rpc-bind
+    - mountd
+

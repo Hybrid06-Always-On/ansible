@@ -1,0 +1,37 @@
+---
+- name: Create minio group
+  ansible.builtin.group:
+    name: "{{ minio_group }}"
+    system: yes
+
+- name: Create minio user
+  ansible.builtin.user:
+    name: "{{ minio_user }}"
+    group: "{{ minio_group }}"
+    system: yes
+    shell: /sbin/nologin
+    create_home: false
+
+- name: Install MinIO binary
+  ansible.builtin.get_url:
+    url: "{{ minio_server_url }}"
+    dest: "{{ minio_bin_path }}"
+    mode: "0755"
+
+- name: Install mc binary
+  ansible.builtin.get_url:
+    url: "{{ mc_url }}"
+    dest: "{{ mc_bin_path }}"
+    mode: "0755"
+
+
+- name: Ensure MinIO data directories ownership
+  ansible.builtin.file:
+    path: "{{ minio_data_dir }}"
+    owner: "{{ minio_user }}"
+    group: "{{ minio_group }}"
+    recurse: yes
+    mode: "0755"
+
+
+

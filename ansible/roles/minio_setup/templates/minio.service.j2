@@ -1,0 +1,28 @@
+[Unit]
+Description=MinIO Distributed Object Storage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ minio_user }}
+Group={{ minio_group }}
+
+# MinIO Root Credentials
+Environment="MINIO_ROOT_USER={{ minio_root_user }}"
+Environment="MINIO_ROOT_PASSWORD={{ minio_root_password }}"
+
+ExecStart={{ minio_bin_path }} server \
+{% for host in groups['minio'] %}
+{% for dir in minio_data_subdirs %}
+http://{{ host }}:{{ minio_api_port }}{{ minio_data_dir }}/{{ dir }} \
+{% endfor %}
+{% endfor %}
+--address 0.0.0.0:{{ minio_api_port }} \
+--console-address 0.0.0.0:{{ minio_console_port }}
+
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

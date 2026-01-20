@@ -1,0 +1,9 @@
+---
+- name: MinIO Setup
+  hosts: minio
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - ansible.builtin.include_role:
+        name: minio_setup

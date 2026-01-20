@@ -1,0 +1,16 @@
+# ===============================
+# ModSecurity Engine Settings
+# ===============================
+
+SecRuleEngine On
+
+SecRequestBodyAccess On
+SecResponseBodyAccess Off
+
+# ===============================
+# Audit Log Settings
+# ===============================
+
+SecAuditEngine RelevantOnly
+SecAuditLog /var/log/modsec_audit.log
+SecAuditLogParts ABIJDEFHZ

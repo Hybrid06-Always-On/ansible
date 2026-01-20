@@ -1,0 +1,102 @@
+---
+# 1. DB 내부 모니터링 계정 생성 (Master DB에서만 실행)
+- name: "Create MySQL Exporter user in DB"
+  community.mysql.mysql_user:
+    name: "{{ db_monitor.user }}"
+    password: "{{ vault_mysql_exporter_password }}"
+    priv: "*.*:PROCESS,REPLICATION CLIENT,SELECT"
+    state: present
+    # !! 수정됨: localhost와 127.0.0.1 두 곳 모두 유저를 생성하여 Host 불일치 해결
+    host: "{{ item }}"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_unix_socket }}"
+  loop:
+    - "localhost"
+    - "127.0.0.1"
+  when: inventory_hostname == active_db_node
+  become: true
+  no_log: true
+  ignore_errors: true
+
+# 2. 설정 디렉토리 및 .my.cnf 생성
+- name: "Create config directory"
+  file:
+    path: "{{ path.config }}"
+    state: directory
+    mode: "0755" # 폴더는 755여야 익스포터가 접근 가능
+
+- name: "Create .my.cnf for mysqld_exporter"
+  copy:
+    dest: "{{ path.config }}/.my.cnf"
+    owner: root
+    # !! 수정됨: 보안도 중요하지만 익스포터가 읽을 수 있도록 0644 권한 부여
+    mode: "0644" 
+    content: |
+      [client]
+      user={{ db_monitor.user }}
+      password={{ vault_mysql_exporter_password }}
+      # !! 추가됨: 명시적으로 127.0.0.1 접속을 유도
+      host=127.0.0.1
+
+# 3. 바이너리 다운로드 및 설치
+- name: "Download mysqld_exporter"
+  get_url:
+    url: "https://github.com/prometheus/mysqld_exporter/releases/download/v0.16.0/mysqld_exporter-0.16.0.linux-amd64.tar.gz"
+    dest: "{{ path.tmp }}/mysqld_exporter.tar.gz"
+  register: download_result
+  until: download_result is succeeded
+  retries: 3
+  delay: 5
+
+- name: "Extract mysqld_exporter"
+  unarchive:
+    src: "{{ path.tmp }}/mysqld_exporter.tar.gz"
+    dest: "{{ path.tmp }}"
+    remote_src: yes
+
+- name: "Install mysqld_exporter Binary"
+  shell: "cp {{ path.tmp }}/mysqld_exporter-*/mysqld_exporter {{ path.bin }}/mysqld_exporter"
+  args:
+    creates: "{{ path.bin }}/mysqld_exporter"
+
+# 4. Systemd 서비스 등록
+- name: "Create mysqld_exporter systemd service"
+  copy:
+    dest: /etc/systemd/system/mysqld_exporter.service
+    content: |
+      [Unit]
+      Description=MySQL Exporter
+      After=network-online.target
+
+      [Service]
+      # !! 수정됨: 권한 문제를 피하기 위해 확실하게 root 유저로 실행
+      User=root
+      ExecStart={{ path.bin }}/mysqld_exporter --config.my-cnf={{ path.config }}/.my.cnf --web.listen-address=:{{ port.mysql }}
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+# 5. 서비스 상태 수집 및 방화벽 설정
+- name: "Populate service facts"
+  service_facts:
+
+- name: "Open port {{ port.mysql }} in firewalld"
+  firewalld:
+    port: "{{ port.mysql }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when:
+    - ansible_facts.services['firewalld.service'] is defined
+    - ansible_facts.services['firewalld.service'].state == 'running'
+  ignore_errors: true
+
+# 6. 서비스 시작 및 활성화
+- name: "Ensure mysqld_exporter is running"
+  systemd:
+    name: mysqld_exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

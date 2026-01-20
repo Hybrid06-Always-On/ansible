@@ -1,0 +1,77 @@
+---
+# MinIO 이중화
+# - name: MinIO Setup
+#   hosts: minio
+#   tasks:
+#     - ansible.builtin.include_role:
+#         name: minio_setup
+
+# MySQL DB 이중화
+- name: MySQL Setup
+  hosts: db
+  tasks:
+    - ansible.builtin.include_role:
+        name: mysql_setup
+
+# HAProxy 구축
+- name: HAProxy Installation and Configuration
+  hosts: haproxy
+  vars_files:
+    - group_vars/db/mysql.yml
+    - group_vars/db/vault.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: db_haproxy_setup
+
+# NFS 서버 구축
+- name: NFS Server Setup
+  hosts: nfs
+  tasks:
+    - ansible.builtin.include_role:
+        name: nfs_setup
+
+# SSL 인증서 설치
+- name: SSL Setup
+  hosts: reverse_proxy
+  tasks:
+    - ansible.builtin.include_role:
+        name: ssl_setup
+
+# WAF 구축
+# - name: WAF Setup
+#   hosts: security
+#   tasks:
+#     - ansible.builtin.include_role:
+#         name: waf_setup
+
+# Nginx Reverse Proxy 구축
+- name: Nginx Reverse Proxy Setup
+  hosts: reverse_proxy
+  tasks:
+    - ansible.builtin.include_role:
+        name: reverse_proxy_setup
+
+# Multi-ControlPlane k8s 클러스터 구축
+- name: Cluster Setup
+  hosts: kubernetes
+  tasks:
+    - ansible.builtin.include_role:
+        name: k8s_cluster_setup
+
+# HelmChart 기본 환경 설정
+# - name: HelmChart Setup (control + worker)
+#   hosts: control1, worker_nodes
+#   become: false
+#   tasks:
+#     - ansible.builtin.include_role:
+#         name: helmchart_setup
+
+# 모니터링 환경 구축
+- name: Monitoring Setup
+  hosts: all
+  vars_files:
+    - "group_vars/db/vault.yml"
+  tasks:
+    - ansible.builtin.include_role:
+        name: monitoring_setup
+      tags: always

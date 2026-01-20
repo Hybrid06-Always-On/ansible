@@ -1,0 +1,6 @@
+# Root (관리자)
+minio_root_user: root
+
+# Ports
+minio_api_port: 9000
+minio_console_port: 9001

@@ -1,0 +1,7 @@
+---
+- name: Cluster Setup
+  hosts: security
+  tasks:
+    - ansible.builtin.include_role:
+        name: ssl_setup
+

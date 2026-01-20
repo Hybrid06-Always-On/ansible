@@ -1,0 +1,45 @@
+# 1. MinIO API 준비 대기
+- name: Wait for MinIO API ready
+  ansible.builtin.uri:
+    url: "{{ minio_local_base_url }}/minio/health/ready"
+    method: GET
+    timeout: 2
+  register: minio_ready
+  retries: 60
+  delay: 3
+  until: minio_ready.status == 200
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  changed_when: false
+
+# 2. mc alias 설정 (항상 보장)
+- name: Configure mc admin alias (ensure)
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} alias set {{ minio_mc_alias }}
+    {{ minio_local_base_url }}
+    {{ minio_root_user }} {{ minio_root_password }}
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  changed_when: false
+
+# 3. 클러스터 admin 준비 확인
+- name: Wait for MinIO cluster initialization
+  become: true
+  become_user: "{{ minio_mc_user }}"
+  environment:
+    MC_CONFIG_DIR: "{{ minio_mc_config_dir }}"
+  ansible.builtin.command: >
+    {{ mc_bin_path }} admin info {{ minio_mc_alias }}
+  register: mc_admin_info
+  retries: 30
+  delay: 5
+  until: mc_admin_info.rc == 0
+  run_once: true
+  delegate_to: "{{ minio_first_node }}"
+  changed_when: false
+
+

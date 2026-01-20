@@ -1,0 +1,12 @@
+---
+# Let's Encrypt domains (SAN certificate)
+domain_names:
+  - alwaysonteam.store
+  - www.alwaysonteam.store
+
+# Let's Encrypt account email
+admin_email: admin@alwaysonteam.store
+
+# SSL paths used by nginx
+ssl_cert_path: /etc/ssl/certs/alwaysonteam.crt
+ssl_key_path: /etc/ssl/private/alwaysonteam.key

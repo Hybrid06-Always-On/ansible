@@ -1,0 +1,6 @@
+---
+- name: 도커 설치
+  ansible.builtin.include_tasks: install_docker.yml
+
+- name: Jenkins 컨테이너 구축
+  ansible.builtin.include_tasks: install_jenkins.yml

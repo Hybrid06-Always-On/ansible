@@ -1,0 +1,9 @@
+---
+- name: Helm 설치
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - epel-release   # EPEL 저장소 추가(helm 설치 시 필요)
+    - helm

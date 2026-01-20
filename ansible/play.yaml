@@ -1,0 +1,9 @@
+# 모니터링 환경 구축
+- name: Monitoring Setup
+  hosts: all
+  vars_files:
+    - "group_vars/db/vault.yml"
+  tasks:
+    - ansible.builtin.include_role:
+        name: monitoring_setup
+      tags: always

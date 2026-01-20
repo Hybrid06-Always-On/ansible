@@ -1,0 +1,24 @@
+- name: 1. vmware tools 설치
+  ansible.builtin.dnf:
+    name: open-vm-tools
+    state: present
+
+- name: 2. vmtoolsd 서비스 기동
+  ansible.builtin.service:
+    name: vmtoolsd
+    state: started
+    enabled: true
+
+- name: 3. vmhgfs 마운트 포인트 생성
+  ansible.builtin.file:
+    path: /mnt/video_data
+    state: directory
+    mode: '0777'
+
+- name: 4. vmhgfs-fuse 영구 마운트 및 즉시 마운트
+  ansible.builtin.mount:
+    path: /mnt/video_data          # 게스트 VM에서 공유 폴더를 마운트할 경로
+    src: .host:/hybrid06_project   # 호스트에서 공유할 디렉터리 경로
+    fstype: fuse.vmhgfs-fuse       # VMware Tools용 FUSE 파일 시스템 타입
+    opts: defaults,allow_other,_netdev  # 기본 옵션, 다른 사용자 접근 허용, 네트워크 준비 후 마운트
+    state: mounted                 # 즉시 마운트 및 부팅 시 자동 마운트

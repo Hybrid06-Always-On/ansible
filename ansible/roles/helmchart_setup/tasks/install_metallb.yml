@@ -1,0 +1,22 @@
+---  
+- name: menifest를 활용한 MetalLB 설치
+  ansible.builtin.command: >
+    kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
+
+#  의존성 추가
+- name: MetalLB controller 파드 Ready 대기
+  ansible.builtin.command: kubectl -n metallb-system wait --for=condition=Ready pod -l component=controller --timeout=300s
+
+- name: MetalLB speaker 파드 Ready 대기
+  ansible.builtin.command: kubectl -n metallb-system wait --for=condition=Ready pod -l component=speaker --timeout=300s
+
+
+# IP Pool 적용
+- name: MetalLB-L2 IP Pool 설정
+  ansible.builtin.copy:
+    src: metallb-L2-config.yml
+    dest: /tmp/metallb-L2-config.yml
+
+- name: MetalLB-L2 IP Pool 적용
+  ansible.builtin.command: >
+    kubectl apply -f /tmp/metallb-L2-config.yml

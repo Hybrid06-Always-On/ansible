@@ -1,0 +1,19 @@
+# roles/monitoring_setup/tasks/main.yml
+---
+# 1. K8s를 제외한 모든 인프라 노드 (Proxy, DB, MinIO, iac-ci)
+- name: "Apply Node Exporter to All Non-K8s Hosts"
+  include_tasks: node.yml
+  when: "'kubernetes' not in group_names"  # k8s 그룹(마스터3+워커3)만 쏙 빼고 설치
+  tags: node
+
+# 2. Proxy 전용 (10.5.1.20)
+- name: "Apply Proxy Exporters to Proxy Hosts"
+  include_tasks: proxy.yml
+  when: "'reverse_proxy' in group_names"
+  tags: proxy
+
+# 3. DB 전용 (Master/Slave)
+- name: "Apply MySQL Exporter to Database Hosts"
+  include_tasks: mysql.yml
+  when: "'db' in group_names"
+  tags: db

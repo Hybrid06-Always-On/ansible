@@ -1,0 +1,16 @@
+---
+- name: 1. DB Check User Setup
+  hosts: db_primary
+  become: yes
+  tasks:
+    - name: Include HAProxy check user task
+      ansible.builtin.import_tasks: ../roles/db_haproxy_setup/tasks/haproxy_check_user.yml
+
+- name: 2. HAProxy Installation and Configuration
+  hosts: haproxy
+  become: yes
+  vars_files:
+    - ../group_vars/db/mysql.yml
+    - ../group_vars/db/vault.yml
+  roles:
+    - role: db_haproxy_setup

@@ -1,0 +1,8 @@
+# ===== mc (MinIO Client) =====
+minio_mc_alias: local
+
+# mc 전용 운영 계정
+minio_mc_user: minio-mc
+minio_mc_group: minio
+minio_mc_home: /var/lib/minio-mc
+minio_mc_config_dir: /var/lib/minio-mc/.mc

@@ -1,0 +1,63 @@
+---
+# 1. 바이너리 다운로드
+- name: "Download node_exporter v{{ ver.node }}"
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ ver.node }}/node_exporter-{{ ver.node }}.linux-amd64.tar.gz"
+    dest: "{{ path.tmp }}/node_exporter.tar.gz"
+    mode: "0644"
+
+# 2. 압축 해제
+- name: "Extract node_exporter binary"
+  unarchive:
+    src: "{{ path.tmp }}/node_exporter.tar.gz"
+    dest: "{{ path.tmp }}"
+    remote_src: yes
+
+# 3. 실행 파일 이동
+- name: "Move binary to {{ path.bin }}"
+  copy:
+    src: "{{ path.tmp }}/node_exporter-{{ ver.node }}.linux-amd64/node_exporter"
+    dest: "{{ path.bin }}/node_exporter"
+    mode: "0755"
+    remote_src: yes
+
+# 4. Systemd 서비스 등록
+- name: "Create node_exporter systemd service"
+  copy:
+    dest: /etc/systemd/system/node_exporter.service
+    content: |
+      [Unit]
+      Description=Node Exporter v{{ ver.node }}
+      After=network-online.target
+
+      [Service]
+      User=root
+      ExecStart={{ path.bin }}/node_exporter --web.listen-address=:{{ port.node }}
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+# 5. 서비스 상태 정보 수집 (방화벽 실행 여부를 판단하기 위해 필요)
+- name: "Populate service facts"
+  service_facts:
+
+# 6. 방화벽 설정 (firewalld 서비스가 'running'일 때만 안전하게 실행)
+- name: "Open port {{ port.node }} in firewalld"
+  firewalld:
+    port: "{{ port.node }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when:
+    - ansible_facts.services['firewalld.service'] is defined
+    - ansible_facts.services['firewalld.service'].state == 'running'
+  ignore_errors: true
+
+# 7. 서비스 시작 및 활성화
+- name: "Ensure node_exporter is running and enabled"
+  systemd:
+    name: node_exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

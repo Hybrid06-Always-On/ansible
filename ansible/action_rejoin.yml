@@ -1,0 +1,13 @@
+---
+### 이 파일은 죽었던 master 서버가 살아났을 때 slave로 복구하는 역할을 합니다.
+- name: Recovery - Rejoin Old Master as Replica
+  hosts: storage2
+  become: yes
+  vars_files:
+    - group_vars/db/mysql.yml
+    - group_vars/db/vault.yml
+  tasks:
+    - name: Run Rejoin Tasks
+      ansible.builtin.include_role:
+        name: db_haproxy_setup
+        tasks_from: rejoin_as_replica.yml

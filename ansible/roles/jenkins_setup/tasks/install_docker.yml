@@ -1,0 +1,43 @@
+---
+- name: dnf-plugins-core 패키지 설치
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
+
+- name: docker 저장소 추가
+  ansible.builtin.command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    creates: /etc/yum.repos.d/docker-ce.repo
+
+- name: docker 패키지 설치
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+
+- name: docker 서비스 시작
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+# sudo 없이 docker 명령어를 사용할 수 있도록 함
+# 재로그인 없이 바로 적용하려면 newgrp docker 명령어 사용
+- name: devops 사용자를 docker 그룹에 추가
+  ansible.builtin.user:
+    name: devops
+    groups: docker
+    append: true
+
+# 젠킨스 컨테이너 내 사용자(jenkins)가 호스트의 도커를 사용할 수 있도록 설정
+- name: 도커 소켓 그룹 및 권한 설정
+  ansible.builtin.file:
+    path: /var/run/docker.sock
+    owner: root
+    group: devops
+    mode: '0660'

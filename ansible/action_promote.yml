@@ -1,0 +1,38 @@
+---
+### 이 파일은 master 서버가 죽었을때 기존의 slave 서버를 master로 승격시켜주는 역할을 합니다.
+- name: Failover - Promote Storage1 to Master
+  hosts: storage1 # 승격 대상 서버
+  become: yes
+  vars_files:
+    - group_vars/db/mysql.yml
+    - group_vars/db/vault.yml
+  tasks:
+    - name: Run promotion tasks from mysql_setup role
+      ansible.builtin.include_role:
+        name: db_haproxy_setup
+        tasks_from: failover_promote.yml
+
+- name: Failover - Update HAProxy Config
+  hosts: proxy
+  become: yes
+  vars_files:
+    - group_vars/db/mysql.yml
+    - group_vars/db/vault.yml
+  tasks:
+    - name: "강제로 변수 덮어쓰기 (storage2를 마스터로)"
+      ansible.builtin.set_fact:
+        active_db_node: "storage1"
+        backup_db_node: "storage2"
+
+    - name: Deploy updated HAProxy config
+      ansible.builtin.template:
+        src: roles/db_haproxy_setup/templates/haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+      register: haproxy_conf
+
+    - name: Restart HAProxy
+      ansible.builtin.service:
+        name: haproxy
+        state: restarted
+      # 파일 내용이 바뀌지 않았더라도 강제로 재시작하고 싶다면 이 조건을 지우세요.
+      when: haproxy_conf.changed

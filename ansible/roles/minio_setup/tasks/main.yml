@@ -1,0 +1,11 @@
+---
+- import_tasks: install_minio.yml
+- import_tasks: prepare_volume.yml
+- import_tasks: configure_systemd.yml
+- import_tasks: mc_user.yml
+- import_tasks: mc.yml
+- import_tasks: users.yml
+- import_tasks: buckets.yml
+- import_tasks: public_buckets.yml
+- import_tasks: policies.yml
+- import_tasks: verify.yml
