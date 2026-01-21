@@ -8,8 +8,3 @@ minio_users:
     public_buckets:
       - video-hls
       - video-thumb
-
-  - name: loki
-    password: "{{ minio_loki_password }}"
-    buckets:
-      - monitoring-loki

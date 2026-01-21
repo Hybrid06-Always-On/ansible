@@ -1,46 +1,45 @@
 ---
 # ==========================================
-# CentOS Stream 9 + Nginx + Let's Encrypt
-# Domains:
-#   - alwaysonteam.store
-#   - www.alwaysonteam.store
+# Certbot Standalone (NO nginx)
 # ==========================================
 
 # ----------------------------
-# Install packages
+# Enable CRB
 # ----------------------------
-- name: Install nginx and certbot
+- name: Enable CRB repository
+  ansible.builtin.command: dnf config-manager --set-enabled crb
+  changed_when: false
+
+# ----------------------------
+# Install EPEL
+# ----------------------------
+- name: Install epel-release
   ansible.builtin.dnf:
-    name:
-      - nginx
-      - certbot
-      - python3-certbot-nginx
+    name: epel-release
     state: present
 
 # ----------------------------
-# Start nginx (HTTP-01 requires port 80)
+# Install certbot only
 # ----------------------------
-- name: Enable and start nginx
-  ansible.builtin.systemd:
-    name: nginx
-    enabled: true
-    state: started
+- name: Install certbot
+  ansible.builtin.dnf:
+    name: certbot
+    state: present
 
 # ----------------------------
-# Obtain Let's Encrypt SAN certificate (webroot)
+# Obtain SSL certificate (standalone)
 # ----------------------------
-- name: Obtain Let's Encrypt certificate (webroot)
+- name: Obtain Let's Encrypt certificate (standalone)
   ansible.builtin.command: >
     certbot certonly
-    --webroot
-    -w /usr/share/nginx/html
+    --standalone
     {% for d in domain_names %}-d {{ d }} {% endfor %}
     --non-interactive
     --agree-tos
     -m {{ admin_email }}
-    --keep-until-expiring
   args:
     creates: /etc/letsencrypt/live/{{ domain_names[0] }}/fullchain.pem
+
 
 # ----------------------------
 # Ensure SSL private directory
@@ -74,14 +73,14 @@
     src: /etc/letsencrypt/live/{{ domain_names[0] }}/fullchain.pem
     dest: "{{ ssl_cert_path }}"
     state: link
-  notify: Restart nginx
+
 
 - name: Link SSL private key
   ansible.builtin.file:
     src: /etc/letsencrypt/live/{{ domain_names[0] }}/privkey.pem
     dest: "{{ ssl_key_path }}"
     state: link
-  notify: Restart nginx
+
 
 # ----------------------------
 # Enable certbot auto-renew
@@ -91,10 +90,3 @@
     name: certbot-renew.timer
     enabled: true
     state: started
-
-# ----------------------------
-# SELinux (CentOS Stream 9)
-# ----------------------------
-- name: Allow nginx to read Let's Encrypt certs (SELinux)
-  ansible.builtin.command: setsebool -P httpd_read_user_content 1
-  changed_when: false

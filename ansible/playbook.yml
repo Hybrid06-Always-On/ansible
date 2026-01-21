@@ -85,6 +85,9 @@
     - ansible.builtin.include_role:
         name: jenkins_setup
 
+
+#### MinIO Access/Secret Key 발급 후에 다시 실행 ####
+
 # 11. ArgoCD 설정 및 애플리케이션 배포
 - name: argocd Setup
   hosts: argocd
