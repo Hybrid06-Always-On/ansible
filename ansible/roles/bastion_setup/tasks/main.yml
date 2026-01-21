@@ -1,2 +1,8 @@
 ---
-# tasks file for roles/bastion_setup
+- name: control1 노드에서 admin.conf 파일 수집
+  ansible.builtin.include_tasks: get_kubeconfig.yml
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: kubectl 설치 및 admin.conf 파일 배포 
+  ansible.builtin.include_tasks: bastion_setting.yml
+  when: inventory_hostname == groups['bastion_server'][0]

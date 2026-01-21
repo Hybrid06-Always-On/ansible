@@ -105,3 +105,10 @@
     - ansible.builtin.include_role:
         name: monitoring_setup
       tags: always
+
+# 13. Bastion 서버 구축 - kubectl 명령어를 사용할 수 있도록 설정
+- name: Bastion Server Setup
+  hosts: bastion_server, control1
+  tasks:
+    - ansible.builtin.include_role:
+        name: bastion_setup

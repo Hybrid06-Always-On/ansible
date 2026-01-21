@@ -1,0 +1,34 @@
+---
+- name: kubectl 설치를 위한 저장소 추가
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/kubernetes.repo
+    content: |
+      [kubernetes]
+      name=Kubernetes
+      baseurl=https://pkgs.k8s.io/core:/stable:/v1.34/rpm/
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.34/rpm/repodata/repomd.xml.key
+      exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+
+- name: kubectl 설치
+  ansible.builtin.command: yum install -y kubectl --disableexcludes=kubernetes
+  args:
+    creates: /usr/bin/kubectl  # kubectl이 이미 설치되어 있으면 다시 설치하지 않음
+    
+- name: .kube 디렉터리 생성
+  ansible.builtin.file:
+    path: /home/devops/.kube
+    state: directory
+    owner: devops
+    group: devops
+    mode: '0700'
+  
+- name: admin.conf 파일 배포  
+  ansible.builtin.copy:
+    src: admin.conf
+    dest: /home/devops/.kube/config
+    owner: devops
+    group: devops
+    mode: '0600'
+  

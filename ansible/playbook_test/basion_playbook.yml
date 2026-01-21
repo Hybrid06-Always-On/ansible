@@ -1,6 +1,0 @@
----
-- name: Bastion Server Setup
-  hosts: bastion
-  tasks:
-    - ansible.builtin.include_role:
-        name: bastion_setup

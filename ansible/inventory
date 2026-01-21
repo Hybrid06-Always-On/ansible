@@ -44,5 +44,5 @@ iac-ci
 [argocd]
 control1
 
-[bastion]
+[bastion_server]
 bastion
