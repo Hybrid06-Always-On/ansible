@@ -41,18 +41,18 @@ do
 done
 
 # # 2. devops 사용자 생성 
-# for host in $HOST_NAMES; 
-# do
-#     sshpass -p "centos" ssh -o StrictHostKeyChecking=no root@$host \
-#     "id devops >/dev/null 2>&1 || (useradd -G wheel devops && echo 'devops:devops' | chpasswd)"
-# done
+for host in $HOST_NAMES; 
+do
+    sshpass -p "centos" ssh -o StrictHostKeyChecking=no root@$host \
+    "id devops >/dev/null 2>&1 || (useradd -G wheel devops && echo 'devops:devops' | chpasswd)"
+done
 
-# # 3. wheel 그룹 sudo 설정
-# for host in $HOST_NAMES; 
-# do
-#     sshpass -p "centos" ssh -o StrictHostKeyChecking=no root@$host \
-#      "sed -i 's/^%wheel/#%wheel/; s/^#\s*%wheel/%wheel/' /etc/sudoers"
-# done
+# 3. wheel 그룹 sudo 설정
+for host in $HOST_NAMES; 
+do
+    sshpass -p "centos" ssh -o StrictHostKeyChecking=no root@$host \
+     "sed -i 's/^%wheel/#%wheel/; s/^#\s*%wheel/%wheel/' /etc/sudoers"
+done
 
 # 4. /etc/hosts 파일 배포
 for host in $HOST_NAMES;
@@ -61,25 +61,25 @@ do
 done
 
 # # 5. 방화벽 비활성화
-# for host in $HOST_NAMES;
-# do
-#     sshpass -p "centos" ssh root@$host "systemctl disable --now firewalld"
-# done
+for host in $HOST_NAMES;
+do
+    sshpass -p "centos" ssh root@$host "systemctl disable --now firewalld"
+done
 
-# # 6. Multi-user.target으로 전환 
-# for host in "${TARGET_HOSTS[@]}";
-# do
-#     sshpass -p "centos" ssh root@$host "systemctl set-default multi-user.target && systemctl isolate multi-user.target"
-# done
+# 6. Multi-user.target으로 전환 
+for host in "${TARGET_HOSTS[@]}";
+do
+    sshpass -p "centos" ssh root@$host "systemctl set-default multi-user.target && systemctl isolate multi-user.target"
+done
 
-# # 7. SELinux permissive로 변경
-# for host in $HOST_NAMES; do
-#     sshpass -p "centos" ssh root@$host "bash -s" <<'ENDSSH'
-# if grep -q '^SELINUX=disabled' /etc/selinux/config; then
-#     sed -i 's/^SELINUX=disabled/SELINUX=permissive/' /etc/selinux/config
-# else
-#     sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
-#     setenforce 0
-# fi
-# ENDSSH
-# done
+# 7. SELinux permissive로 변경
+for host in $HOST_NAMES; do
+    sshpass -p "centos" ssh root@$host "bash -s" <<'ENDSSH'
+if grep -q '^SELINUX=disabled' /etc/selinux/config; then
+    sed -i 's/^SELINUX=disabled/SELINUX=permissive/' /etc/selinux/config
+else
+    sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+    setenforce 0
+fi
+ENDSSH
+done
