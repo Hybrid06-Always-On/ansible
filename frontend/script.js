@@ -10,7 +10,7 @@ let hls = null;
 ========================= */
 async function fetchImages(page) {
   try {
-    const response = await fetch(`http://backend-svc:3000/api/thumbnails/${page}`);
+    const response = await fetch(`/api/thumbnails/${page}`);
     const data = await response.json();
 
     // 🔥 데이터가 없는 경우 (마지막 페이지) 처리
@@ -78,7 +78,7 @@ async function fetchVideo(id) {
   if (!id) return;
 
   try {
-    const response = await fetch(`http://backend-svc:3000/api/video/${id}`);
+    const response = await fetch(`/api/video/${id}`);
     const data = await response.json();
     console.log(data);
 
