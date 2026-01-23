@@ -118,14 +118,17 @@ http {
         # Video Thumb Cache (MinIO 서버 대상 이미지 캐싱)
         location /video-thumb/ {
             proxy_pass http://minio;  # 상단 upstream minio 사용
+            
             proxy_cache nginx_cache;                # 캐시 영역 지정
-            proxy_cache_valid 200 301 302 10d;      # 요청이 성공하면 응답을 10일 동안 캐싱
+            proxy_cache_key "$host$uri";            # 캐시를 식별하는 키 값 설정 (쿼리 스트링을 제외한 호스트와 URI만 사용하여 서명 주소가 달라도 동일 파일로 인식)
+            proxy_ignore_headers Cache-Control Expires Set-Cookie;  # 강제 캐싱
+            proxy_cache_valid 200 301 302 1d;       # 요청이 성공하면 응답을 1일 동안 캐싱
             proxy_cache_lock on;                    # 동시 요청 시 하나만 원본 서버로 전달
             proxy_cache_use_stale error timeout updating; # 서버 문제 시 캐시 응답
-            expires 10d;                            # 브라우저 캐싱
-            add_header X-Cache-Status $upstream_cache_status;
+            expires 1d;                           # 브라우저 캐싱
+            add_header X-Cache-Status $upstream_cache_status;  # 응답 헤더에 캐시 적중 여부 표시
 
-            proxy_set_header Host {{ internal_domain }}:9000;
+            proxy_set_header Host {{ internal_domain }}:9000;   # 외부 도메인을 내부 사설 IP로 치환
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -134,14 +137,17 @@ http {
         # Video HLS Cache (MinIO 서버 대상 영상 캐싱)
         location /video-hls/ {
             proxy_pass http://minio;  # 상단 upstream minio 사용
+            
             proxy_cache nginx_cache;                # 캐시 영역 지정
+            proxy_cache_key "$host$uri";            # 캐시를 식별하는 키 값 설정 (쿼리 스트링을 제외한 호스트와 URI만 사용하여 서명 주소가 달라도 동일 파일로 인식)
+            proxy_ignore_headers Cache-Control Expires Set-Cookie;  # 강제 캐싱
             proxy_cache_valid 200 301 302 1h;       # 요청이 성공하면 응답을 1시간 동안 캐싱
             proxy_cache_lock on;                    # 동시 요청 시 하나만 원본 서버로 전달
             proxy_cache_use_stale error timeout updating; # 원본 서버 문제 시 캐시 응답
             expires 1h;                             # 브라우저 캐싱
-            add_header X-Cache-Status $upstream_cache_status;
+            add_header X-Cache-Status $upstream_cache_status;  # 응답 헤더에 캐시 적중 여부 표시
 
-            proxy_set_header Host {{ internal_domain }}:9000;
+            proxy_set_header Host {{ internal_domain }}:9000;  # 외부 도메인을 내부 사설 IP로 치환
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;

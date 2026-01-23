@@ -40,4 +40,4 @@
     path: /var/run/docker.sock
     owner: root
     group: devops
-    mode: '0660'
+    mode: '0666'

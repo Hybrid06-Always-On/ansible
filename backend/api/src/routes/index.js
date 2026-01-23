@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const responseUtil = require('../utils/responseUtil');
 
 const thumbnailController = require('../controllers/thumbnailController');
 const videoController = require('../controllers/videoController');
@@ -10,5 +9,10 @@ router.get('/api/thumbnails/:page', thumbnailController.getThumbnails);
 
 // 영상 단일 조회 라우팅
 router.get('/api/video/:id', videoController.getVideo);
+
+// livenessProbe self healing 라우팅
+router.get('/health', (req, res) => {
+    res.send('ok');
+});
 
 module.exports = router;
