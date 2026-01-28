@@ -34,7 +34,7 @@ stream {
 http {
     include /etc/nginx/mime.types; 
     default_type application/octet-stream;  
-
+    
     # MinIO API 로드밸런싱 및 수동 Health Check 설정
     upstream minio {
         ip_hash;   # 동일한 클라이언트의 요청을 동일 서버로 전달
@@ -74,7 +74,19 @@ http {
     server {
         listen 443 ssl;   # 443 포트 + HTTPS 통신
         server_name {{ external_domain | join(' ') }};
+
+        server_tokens off;      # nginx 버전 정보 숨기기
         
+        # 에러 응답을 Nginx가 처리하도록 설정
+        proxy_intercept_errors on;
+
+        error_page 404 = @fallback_404;
+
+        location @fallback_404 {
+            default_type text/plain;
+            return 404 "404 Not Found";
+        }
+
         # WAF 활성화
         modsecurity on;
         modsecurity_rules_file  /etc/nginx/modsec/main.conf;
@@ -82,7 +94,7 @@ http {
         # SSL/TLS 설정
         ssl_certificate         /etc/ssl/certs/my_server.crt;
         ssl_certificate_key     /etc/ssl/private/my_server.key; 
-        
+
         # Web Application
         location / {
             proxy_pass http://{{ url.web }}/;           # metalLB 서버 주소
