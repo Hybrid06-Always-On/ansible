@@ -68,7 +68,17 @@ http {
     server {
         listen 80;  
         server_name {{ external_domain | join(' ') }};
-        return 301 https://$host$request_uri;   # 80 포트로 들어오면 443으로 리디렉트
+
+        # Route53 헬스체크 전용 
+        location = /health {
+            access_log off;
+            return 200 "OK";
+            add_header Content-Type text/plain;
+        }
+
+        location / {
+            return 301 https://$host$request_uri;   # 80 포트로 들어오면 443으로 리디렉트
+        }
     }  
 
     server {
@@ -110,15 +120,15 @@ http {
         }
 
         location /api/ {
-            proxy_pass http://{{ api_backend }}:{{ api_port }};
-            
+            proxy_pass http://{{ url.web }};
+    
             # 응답 데이터 내의 내부 IP 주소를 외부 도메인/IP로 치환
             sub_filter 'http://10.5.1.20:9000' 'https://alwaysonteam.store';
             sub_filter 'http://10.5.1.20:9000' 'https://www.alwaysonteam.store';
             sub_filter_once off;        # 모든 문자열에 대해 치환 적용
             sub_filter_types application/json; # JSON 데이터 타입에도 적용
             
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;

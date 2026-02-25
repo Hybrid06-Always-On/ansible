@@ -3,6 +3,7 @@
 external_domain:
   - alwaysonteam.store
   - www.alwaysonteam.store
+  - 121.160.41.59
 internal_domain: 10.5.1.20
 
 url:
@@ -16,5 +17,3 @@ url:
     - 10.5.2.40
     - 10.5.2.50
 
-api_backend: 10.5.2.60
-api_port: 32000
