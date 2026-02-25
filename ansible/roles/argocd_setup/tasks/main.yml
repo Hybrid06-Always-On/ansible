@@ -5,7 +5,7 @@
 
 - name: ArgoCD 설치
   ansible.builtin.command: >
-    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    kubectl apply --server-side --force-conflicts -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 - name: ArgoCD가 생성될 때까지 대기
   ansible.builtin.command: kubectl rollout status deploy/argocd-repo-server -n argocd
