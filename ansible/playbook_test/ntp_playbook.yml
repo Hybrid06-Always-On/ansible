@@ -1,0 +1,5 @@
+- name: NTP sync for all nodes
+  hosts: all
+  become: true
+  roles:
+    - ntp_setup

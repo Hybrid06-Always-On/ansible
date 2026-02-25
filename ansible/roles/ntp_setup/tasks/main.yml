@@ -1,0 +1,25 @@
+---
+- name: Install chrony
+  ansible.builtin.dnf:
+    name: chrony
+    state: present
+
+- name: Configure chrony
+  ansible.builtin.copy:
+    dest: /etc/chrony.conf
+    content: |
+      server time.kriss.re.kr iburst
+      server ntp.kornet.net iburst
+      server time.google.com iburst
+
+      driftfile /var/lib/chrony/drift
+      makestep 1.0 3
+      rtcsync
+      logdir /var/log/chrony
+
+- name: Enable and restart chronyd
+  ansible.builtin.systemd:
+    name: chronyd
+    state: restarted
+    enabled: true
+
